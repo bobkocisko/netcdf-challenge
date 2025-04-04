@@ -3,19 +3,41 @@
 # for providing the template for this
 
 
+# ---------
+# Stage #1
+# ---------
 
-# The first stage only builds things.  We'll COPY files out of it
-# later.
-FROM ubuntu:24.04 AS builder
-
+# We start with a base os stage that is updated and that
+# handles pid 1 issues so we don't have to do that multiple times
+FROM ubuntu:24.04 AS os_base
+RUN apt-get update
 
 # Install any base dependencies we need here.
-RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive \
+  apt-get install --assume-yes --no-install-recommends \
+  tini
+
+# Make sure that PID 1 is a real init process
+# so that signals are properly forwarded and zombies
+# are taken care of
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+
+# ---------
+# Stage #2
+# ---------
+
+# The dev environment stage is used both as a starting point 
+# for the builder stage below and also as a dev container for the ide
+FROM os_base AS dev_environment
+
+# Install any base dependencies we need here for building both
+# the dependent libraries and our own library.
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get install --assume-yes --no-install-recommends \
       build-essential \
-      cmake
-
+      cmake \
+      libnetcdf-c++4-dev
 
 
 # Build crow library and install it into /usr/local.
@@ -32,13 +54,24 @@ RUN cmake .. \
 
 RUN make install
 
+# NOTE: at the end of this stage we now have an environment that
+# can be used by the IDE with all dependencies fully present,
+# and can also be used by the next stage to build the final 
+# executable
 
+
+
+
+# ---------
+# Stage #3
+# ---------
+
+
+# The builder stage continues from the dev_environment stage and
+# builds the application
+FROM dev_environment AS builder
 
 # Build the application itself
-RUN DEBIAN_FRONTEND=noninteractive \
-  apt-get install --assume-yes --no-install-recommends \
-  libnetcdf-c++4-dev
-
 WORKDIR /usr/src/app
 COPY src /usr/src/app/
 WORKDIR /usr/src/app/build
@@ -47,12 +80,15 @@ RUN cmake ..
 RUN make install
 
 
+# ---------
+# Stage #4
+# ---------
 
 # The final FROM line is the actual runtime image.  Anything before
 # this will be built, and will show up in `docker images`, but isn't
 # "the output" of the build.
 
-FROM ubuntu:24.04
+FROM os_base AS final_image
 
 # Get the installed libraries from the earlier stage.
 COPY --from=builder /usr/local/ /usr/local/

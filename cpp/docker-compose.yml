@@ -1,19 +1,23 @@
 services:
   # Main service
-  app:
+  netcdf-api:
     build: .
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
     container_name: netcdf-api
     command: netcdf_api
     ports:
       - 80:80
 
   # For IDE use only
-  app_dev:
+  netcdf-api-ide:
     build:
       context: .
-      target: builder
-    container_name: netcdf-api-builder
-    command: tail -F /dev/null   # Keep container running
+      target: dev_environment
+    container_name: netcdf-api-ide
+    command: sleep infinity   # Keep container running
     volumes:
       - ./src:/usr/src/app
     
