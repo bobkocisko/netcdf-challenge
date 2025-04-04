@@ -98,5 +98,5 @@ RUN ldconfig
 
 # Set ordinary metadata to run a Docker container.  (The binary is
 # probably in /usr/local/bin which is on the default PATH.)
-EXPOSE 80
+EXPOSE 8080
 CMD ["netcdf_api"]

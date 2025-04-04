@@ -9,7 +9,7 @@ services:
     container_name: netcdf-api
     command: netcdf_api
     ports:
-      - 80:80
+      - 8080:8080
 
   # For IDE use only
   netcdf-api-ide:
