@@ -1,13 +1,21 @@
 services:
   # Main service
   netcdf-api:
-    build: .
+    build:
+      context: .
+      args:
+        NETCDF_FILE_TARGET: /usr/local/var/
+        NETCDF_FILE: concentration.timeseries.nc
     develop:
       watch:
         - action: rebuild
           path: ./src
     container_name: netcdf-api
-    command: netcdf_api
+    
+    # NOTE: Unfortunately did not find a way to avoid this duplicative
+    #  configuration so I'm giving up on improving this for now.
+    #  See Dockerfile for more details.
+    command: netcdf_api /usr/local/var/concentration.timeseries.nc
     ports:
       - 8080:8080
 

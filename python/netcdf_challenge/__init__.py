@@ -1,7 +1,7 @@
 from netCDF4 import Dataset
 import pprint
 
-rootgrp = Dataset("./concentration.timeseries.nc", "r", format="NETCDF4")
+rootgrp = Dataset("../cpp/concentration.timeseries.nc", "r", format="NETCDF4")
 
 print("\n\nData Model\n")
 print(rootgrp.data_model)

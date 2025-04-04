@@ -37,6 +37,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     apt-get install --assume-yes --no-install-recommends \
       build-essential \
       cmake \
+      pkg-config \
       libnetcdf-c++4-dev
 
 
@@ -90,13 +91,32 @@ RUN make install
 
 FROM os_base AS final_image
 
-# Get the installed libraries from the earlier stage.
+ARG NETCDF_FILE
+ARG NETCDF_FILE_TARGET
+
+# Install runtime libaries for dependencies
+RUN DEBIAN_FRONTEND=noninteractive \
+  apt-get install --assume-yes --no-install-recommends \
+  libnetcdf-c++4-1
+
+
+# Copy the installed libraries from the earlier stage.
 COPY --from=builder /usr/local/ /usr/local/
 
 # Regenerate the shared-library cache.
 RUN ldconfig
 
+# Add the netCDF file to run against
+COPY ${NETCDF_FILE} ${NETCDF_FILE_TARGET}
+
 # Set ordinary metadata to run a Docker container.  (The binary is
 # probably in /usr/local/bin which is on the default PATH.)
 EXPOSE 8080
-CMD ["netcdf_api"]
+
+# NOTE: the expectation is that this command will be run by
+#  docker-compose.yml specifying a 'command'.  Unfortunately 
+#  I wasn't able to find a way to have the following line 
+#  resolve to the value of ARG (or an ENV) so I ultimately gave 
+#  up on this in favor of duplicative configuration in 
+#  docker-compose.yml
+# CMD ["netcdf_api", "/usr/local/var/${NETCDF_FILE}"]
