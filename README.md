@@ -23,3 +23,28 @@ and to provide the dev container for the VS Code ide.
    - http://localhost:8080/get-data?time=1&z=1
    - http://localhost:8080/get-image?time=1&z=1
 
+## Reference
+
+### netCDF file format
+
+[Fundamentals of netCDF data storage](https://pro.arcgis.com/en/pro-app/latest/help/data/imagery/fundamentals-of-netcdf.htm)
+
+[NetCDF: Introduction and Overview](https://docs.unidata.ucar.edu/netcdf-c/current/index.html)
+
+[The NetCDF User's Guide](https://docs.unidata.ucar.edu/nug/current/index.html)
+
+### netCDF library usage
+
+[netCDF C++ Interface Guide](https://docs.unidata.ucar.edu/netcdf-cxx/current/index.html)
+
+[NetCDF: The NetCDF-C Tutorial](https://docs.unidata.ucar.edu/netcdf-c/current/tutorial_8dox.html)
+
+[NetCDF: Reading NetCDF/HDF5 Format NetCDF Files of Unknown Structure](https://docs.unidata.ucar.edu/netcdf-c/current/reading_unknown_nc4.html)
+
+### Crow REST library
+
+[Crow REST library docs](https://crowcpp.org/master/getting_started/setup/linux/)
+
+### Docker reference
+
+[PID 1 Signal Handling in Docker](https://petermalmgren.com/signal-handling-docker/)
