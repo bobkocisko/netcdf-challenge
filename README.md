@@ -44,7 +44,7 @@ and to provide the dev container for the VS Code ide.
 
 [NetCDF: The NetCDF-C Tutorial](https://docs.unidata.ucar.edu/netcdf-c/current/tutorial_8dox.html)
 
-[NetCDF: Reading NetCDF/HDF5 Format NetCDF Files of Unknown Structure](https://docs.unidata.ucar.edu/netcdf-c/current/reading_unknown_nc4.html)
+[NetCDF: Reading NetCDF/HDF5 Format NetCDF Files of Unknown Structure](https://docs.unidata.ucar.edu/netcdf-c/current/reading_unknown_nc4.html) *(groups/types don't appear to be present for the sample file we are working with)*
 
 ### Crow REST library
 

@@ -1,6 +1,8 @@
 #include "crow.h"
 #include "netcdf"
 
+#include "read_netcdf.hpp"
+
 int main(int argc, char *argv[])
 {
   // Ensure we have one argument
@@ -19,10 +21,11 @@ int main(int argc, char *argv[])
 
   using namespace netCDF;
 
-  NcFile a(file_name, NcFile::FileMode::read);
+  NcFile f(file_name, NcFile::FileMode::read);
+  read_netcdf r(f);
   
-  CROW_ROUTE(app, "/get-info")([&a](){
-    return "Group count: " + std::to_string(a.getGroupCount());
+  CROW_ROUTE(app, "/get-info")([&](){
+    return r.get_info();
   });
 
   app
@@ -30,10 +33,13 @@ int main(int argc, char *argv[])
     .multithreaded()  // Based on some experimentation, crow always uses a 
                       // background thread to service requests, but when you
                       // specify `multithreaded()` it will use *all* the 
-                      // threads to service requests.  I'm leaving this
+                      // cpus to service requests.  I'm leaving this
                       // specified here, not because this is a high-throughput
                       // application, but because it's an important indicator
                       // that we have to deal with multithreading concerns.
+                      // However! Since we're dealing with a read-only file
+                      // we should not have any issues sharing the single
+                      // file across threads.
     .run();
 
   return EXIT_SUCCESS;
