@@ -21,6 +21,10 @@ int main(int argc, char *argv[])
 
   using namespace netCDF;
 
+  // TODO: keep a separate instance of NcFile and read_netcdf
+  // per thread to avoid issues discussed here:
+  // https://github.com/Unidata/netcdf-c/issues/1373#issuecomment-637794942
+
   NcFile f(file_name, NcFile::FileMode::read);
   read_netcdf r(f);
   
@@ -37,9 +41,6 @@ int main(int argc, char *argv[])
                       // specified here, not because this is a high-throughput
                       // application, but because it's an important indicator
                       // that we have to deal with multithreading concerns.
-                      // However! Since we're dealing with a read-only file
-                      // we should not have any issues sharing the single
-                      // file across threads.
     .run();
 
   return EXIT_SUCCESS;
