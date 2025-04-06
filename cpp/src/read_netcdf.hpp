@@ -18,9 +18,118 @@ public:
     nc_inq_format(file.getId(), &this->format);
   }
 
+  /**
+   * Returns general information about dimensions, variables and
+   * attributes formatted as json
+   */
   json::wvalue get_info() const {
     return get_info(file);    
   }
+
+  /**
+   * Returns the data as a json document for the specified variable_name with 
+   * its first indexes constrained to the specified values in 'prefix_indices'
+   */
+  json::wvalue get_data(
+      const char* variable_name, 
+      std::vector<uint64_t> prefix_indices
+  ) const {
+    NcVar var = file.getVar(variable_name);
+    try {
+      if (var.isNull()) {
+        throw std::invalid_argument("does not exist");
+      }
+      if (prefix_indices.size() > var.getDimCount()) {
+        throw std::invalid_argument("has " + 
+          std::to_string(var.getDimCount()) + " dimensions " +
+          "but you've specifed more indexes (" + 
+          std::to_string(prefix_indices.size()) + ")");
+      }
+    }
+    catch(std::exception& e) {
+      throw std::invalid_argument(
+        std::string("Variable name '") + variable_name + "': " + e.what());
+    }
+
+    // The first dimensions we'll start at the indices in 'prefix_indices'
+    // and do counts of 1
+    std::vector<uint64_t> indices = prefix_indices;
+    std::vector<uint64_t> counts(prefix_indices.size(), 1);
+
+    std::size_t first_unrestricted_index = prefix_indices.size();
+    // Then we want to add the entire range [0, size) of the
+    // remaining dimensions
+    std::size_t total_data_elements = 1;
+    for (std::size_t i = first_unrestricted_index; i < var.getDimCount(); ++i)
+    {
+      indices.push_back(0);
+      NcDim dim = var.getDim(i);
+      counts.push_back(dim.getSize());
+      total_data_elements *= dim.getSize();
+    }
+
+
+    std::size_t buffer_size = total_data_elements * var.getType().getSize();
+    std::vector<char> buf(buffer_size);
+    void* buffer = (void*)buf.data();
+    var.getVar(indices, counts, buffer);
+
+    std::vector<json::wvalue::list> lists(indices.size());
+
+    std::size_t last_dim_index = var.getDimCount() - 1;
+
+    // Handle special case where all indices have been specified
+    if (first_unrestricted_index == indices.size()) {
+      // TODO: refactor this to its own method
+      switch (var.getType().getTypeClass())
+      {
+        case NcType::nc_DOUBLE:
+          return ((double *)buffer)[0];
+        default:
+          // TODO: fix this!
+          throw std::invalid_argument("Can only parse DOUBLE values");
+      }
+
+    }
+
+    for (std::size_t i = 0; i < total_data_elements; ++i) {
+      for (
+          std::size_t li = last_dim_index; 
+          li >= first_unrestricted_index;
+          --li
+      ) {
+        json::wvalue::list &dim_list = lists[li];
+        if (li == last_dim_index) {
+          // TODO: refactor this
+          switch (var.getType().getTypeClass())
+          {
+            case NcType::nc_DOUBLE:
+              dim_list.push_back(((double *)buffer)[i]);
+              break;
+            default:
+              // TODO: fix this!
+              throw std::invalid_argument("Can only parse DOUBLE values");
+          }
+        } 
+
+        if (dim_list.size() == counts[li]) {
+          if (li > first_unrestricted_index) {
+            // It's time to append this list to the previous one
+            lists[li - 1].push_back(dim_list);
+            dim_list.clear();
+          }
+        }
+        else {
+          // We can break out of the for loop because we're
+          // still filling up this list.
+          break;
+        }
+      }
+    }
+    // Return the root unbounded list
+    return lists[first_unrestricted_index];
+  }
+
 
   /**
    * Validates that the specified index is valid for the dimension,

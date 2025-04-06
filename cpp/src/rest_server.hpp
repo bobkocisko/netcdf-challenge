@@ -18,27 +18,30 @@ public:
 
     CROW_ROUTE(app, "/get-data")([=](const crow::request& req){
       read_netcdf& r = get_read_netcdf_for_thread();
-      int time_index, z_index;
-      try {
-        time_index = get_url_param_as_size_t(req, "time_index");
-        z_index = get_url_param_as_size_t(req, "z_index");
+      uint64_t time_index, z_index;
+
+      // 1. Check that the request is valid, and if not return BAD_REQUEST
+      try
+      {
+        time_index = get_url_param_as_uint64(req, "time_index");
+        z_index = get_url_param_as_uint64(req, "z_index");
 
         // Before continuing, make sure the dimensions are valid
         // so that if they are invalid, we will return BAD_RESPONSE
         r.validate_dimension_index("time", time_index);
         r.validate_dimension_index("z", z_index);
-
-      } catch (std::exception& e) {
+      }
+      catch (std::exception &e)
+      {
         json::wvalue rsp = json::wvalue::object();
         rsp["error"] = e.what();
         return crow::response(crow::status::BAD_REQUEST, rsp);
       }
 
-      // read_netcdf& r = get_read_netcdf_for_thread();
-      // return r.get_info();
-      json::wvalue rsp = json::wvalue::object();
-      rsp["ok"] = "ok";
-      return crow::response(crow::status::OK, rsp);
+      // 2. Return the data
+      return crow::response(crow::status::OK, 
+        r.get_data("concentration", 
+          std::vector<uint64_t>({time_index, z_index})));
     });
 
     app
@@ -63,7 +66,7 @@ public:
 
 private:
 
-  static std::size_t get_url_param_as_size_t(
+  static std::uint64_t get_url_param_as_uint64(
       const crow::request& req, 
       const char* name) {
     char *val = req.url_params.get(name);
@@ -72,7 +75,7 @@ private:
         std::string("Missing required argument ") + name);
     }
     try {
-      int result = std::stoi(val);
+      int64_t result = std::stoll(val);
       if (result < 0) {
         throw std::invalid_argument("Negative values not allowed");
       }
