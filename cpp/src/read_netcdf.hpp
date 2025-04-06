@@ -1,24 +1,23 @@
-#include "crow.h"
-#include "netcdf"
+#include <crow.h>
+#include <netcdf>
 
 using namespace netCDF;
 using namespace crow;
 
 class read_netcdf {
-  const NcFile& file;
+  NcFile file;
 
   int format;
 
   public:
-
-  read_netcdf(const NcFile& file)
-    : file(file)
-  {
-    // Apparently you have to drop down to the c library directly
-    // to get access to the format information
-    // https://github.com/Unidata/netcdf-cxx4/issues/49
-    nc_inq_format(file.getId(), &this->format);
-  }
+    read_netcdf(const char *path)
+      : file(path, NcFile::FileMode::read)
+    {
+      // Apparently you have to drop down to the c library directly
+      // to get access to the format information
+      // https://github.com/Unidata/netcdf-cxx4/issues/49
+      nc_inq_format(file.getId(), &this->format);
+    }
 
   json::wvalue get_info() const {
     return get_info(file);    

@@ -1,7 +1,8 @@
-#include "crow.h"
-#include "netcdf"
-
 #include "read_netcdf.hpp"
+
+#include <crow.h>
+
+read_netcdf& get_nc_reader_for_thread(const char* file_name);
 
 int main(int argc, char *argv[])
 {
@@ -21,14 +22,8 @@ int main(int argc, char *argv[])
 
   using namespace netCDF;
 
-  // TODO: keep a separate instance of NcFile and read_netcdf
-  // per thread to avoid issues discussed here:
-  // https://github.com/Unidata/netcdf-c/issues/1373#issuecomment-637794942
-
-  NcFile f(file_name, NcFile::FileMode::read);
-  read_netcdf r(f);
-  
-  CROW_ROUTE(app, "/get-info")([&](){
+  CROW_ROUTE(app, "/get-info")([=](){
+    read_netcdf& r = get_nc_reader_for_thread(file_name);
     return r.get_info();
   });
 
@@ -44,4 +39,28 @@ int main(int argc, char *argv[])
     .run();
 
   return EXIT_SUCCESS;
+}
+
+// NOTE: due to the concerns mentioned here...
+//   https://github.com/Unidata/netcdf-c/issues/1373#issuecomment-637794942
+//  ...we need to make sure that each NcFile instance is managed
+//  by no more than one thread.  To accomplish this we are using
+//  thread_local storage so that each thread has its own instance.
+//  It is accepted that this will cause a slowdown when each thread
+//  is invoked for the first time.
+thread_local std::unique_ptr<read_netcdf> nc_reader = nullptr;
+
+// Return the nc_reader instance unique to the current thread.
+read_netcdf& get_nc_reader_for_thread(const char* file_name) {
+  if (nc_reader == nullptr) {
+    std::cout 
+      << "Creating new read_netcdf for thread " 
+      << std::this_thread::get_id() << std::endl;
+    nc_reader = std::make_unique<read_netcdf>(file_name);
+  } else {
+    std::cout
+        << "Re-using read_netcdf already created for thread "
+        << std::this_thread::get_id() << std::endl;
+  }
+  return *(nc_reader.get());
 }
