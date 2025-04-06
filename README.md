@@ -20,12 +20,12 @@ and to provide the dev container for the VS Code ide.
 
 4. `docker compose watch netcdf-api` *(automatically rebuild and restart container on any code changes, and display build output)*
 
-4. Test the endpoints available:
+5. Test the endpoints available:
    - http://localhost:8080/get-info
    - http://localhost:8080/get-data?time=1&z=1
    - http://localhost:8080/get-image?time=1&z=1
 
-5. To get full intellisense support in VSCode:
+6. To get full intellisense support in VSCode:
 
    1. Choose **Attach to running container...**
    2. Then select **/netcdf-api-ide** from the options

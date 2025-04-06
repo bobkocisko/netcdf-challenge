@@ -80,16 +80,7 @@ public:
 
     // Handle special case where all indices have been specified
     if (first_unrestricted_index == indices.size()) {
-      // TODO: refactor this to its own method
-      switch (var.getType().getTypeClass())
-      {
-        case NcType::nc_DOUBLE:
-          return ((double *)buffer)[0];
-        default:
-          // TODO: fix this!
-          throw std::invalid_argument("Can only parse DOUBLE values");
-      }
-
+      return get_data_from_buffer(var.getType(), buffer, 0);
     }
 
     for (std::size_t i = 0; i < total_data_elements; ++i) {
@@ -100,16 +91,8 @@ public:
       ) {
         json::wvalue::list &dim_list = lists[li];
         if (li == last_dim_index) {
-          // TODO: refactor this
-          switch (var.getType().getTypeClass())
-          {
-            case NcType::nc_DOUBLE:
-              dim_list.push_back(((double *)buffer)[i]);
-              break;
-            default:
-              // TODO: fix this!
-              throw std::invalid_argument("Can only parse DOUBLE values");
-          }
+          dim_list.push_back(
+            get_data_from_buffer(var.getType(), buffer, i));
         } 
 
         if (dim_list.size() == counts[li]) {
@@ -155,6 +138,29 @@ public:
   }
 
 private:
+
+  /**
+   * Return the json value depending on the type of data for the specified 
+   * type, reading from the buffer at the specified index. 
+   * NOTE: This should be merged with `get_info(const NcAtt& a)` below 
+   * since they do similar things, but in the interest of time
+   * for now I'm keeping them separate
+   */
+  json::wvalue get_data_from_buffer(
+      NcType t, void* buffer, std::size_t index) const 
+  {
+    switch (t.getTypeClass())
+    {
+      case NcType::nc_DOUBLE:
+        return ((double *)buffer)[index];
+      default:
+        // NOTE: we should obviously extend this to handle all possible
+        // types but I have run out of time to complete this so we're
+        // throwing an exception if another type is encountered.
+        throw std::invalid_argument(
+          "WIP - Currently only handles DOUBLE values");
+    }
+  }
 
   /**
    * Call get_info for each value in the specified multimap.
