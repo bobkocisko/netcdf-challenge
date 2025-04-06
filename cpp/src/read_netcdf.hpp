@@ -27,13 +27,18 @@ class read_netcdf {
   private:
 
   /**
+   * Call get_info for each value in the specified multimap.
    * Why do we iterate in reverse?  Because for some reason the
    * crow json api insists on presenting the fields in
    * the reverse order that they were inserted when a multimap
    * is involved.
+   * NOTE! This implementation only supports a single value
+   * for each key in the multimap, which seems to be sufficient
+   * for the sample file provided.  A future upgrade could
+   * convert the first value to a list upon discovery of a second.
    */
   template <typename K, typename V>
-  auto iterate_in_reverse(const std::multimap<K, V>& map) const {
+  auto get_info_mm(const std::multimap<K, V>& map) const {
     auto o = json::wvalue::object();
     for (auto iter = map.rbegin(); iter != map.rend(); ++iter) {
       auto &[k, v] = *iter;
@@ -48,9 +53,9 @@ class read_netcdf {
     // NOTE: Writing these in the reverse order on purpose to fix
     // crow json's ordering
 
-    w["attributes"] = iterate_in_reverse(g.getAtts());
-    w["variables"] = iterate_in_reverse(g.getVars());
-    w["dimensions"] = iterate_in_reverse(g.getDims());
+    w["attributes"] = get_info_mm(g.getAtts());
+    w["variables"] = get_info_mm(g.getVars());
+    w["dimensions"] = get_info_mm(g.getDims());
 
     return w;
   }
@@ -199,6 +204,9 @@ class read_netcdf {
           * would create an extra string in a list of strings.  */
           if (format != NC_FORMAT_NETCDF4)
           {
+            // NOTE: technically we should be returning here an
+            // array of strings, but for now I'm keeping it simple
+            // and just keeping things similar to the ncdump approach
             result << "\\n\",\"";
           }
           else
