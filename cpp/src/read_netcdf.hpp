@@ -6,24 +6,46 @@ using namespace crow;
 
 class read_netcdf {
   NcFile file;
-
   int format;
 
-  public:
-    read_netcdf(const char *path)
-      : file(path, NcFile::FileMode::read)
-    {
-      // Apparently you have to drop down to the c library directly
-      // to get access to the format information
-      // https://github.com/Unidata/netcdf-cxx4/issues/49
-      nc_inq_format(file.getId(), &this->format);
-    }
+public:
+  read_netcdf(const char *path)
+    : file(path, NcFile::FileMode::read)
+  {
+    // Apparently you have to drop down to the c library directly
+    // to get access to the format information
+    // https://github.com/Unidata/netcdf-cxx4/issues/49
+    nc_inq_format(file.getId(), &this->format);
+  }
 
   json::wvalue get_info() const {
     return get_info(file);    
   }
 
-  private:
+  /**
+   * Validates that the specified index is valid for the dimension,
+   * and throws exception if either the dimension name or index are
+   * invalid.
+   */
+  void validate_dimension_index(
+      const char* dimension_name, 
+      std::size_t attempting_index
+  ) const {
+    NcDim dim = file.getDim(dimension_name);
+    if (dim.isNull()) {
+      throw std::invalid_argument(
+        std::string("No such dimension '") + dimension_name + "'");
+    }
+    if (attempting_index >= dim.getSize()) {
+      throw std::invalid_argument(
+        std::string("Dimension '") + dimension_name + 
+        " has size " + std::to_string(dim.getSize()) + 
+        " which means your attempted index " + 
+        std::to_string(attempting_index) + " is invalid");
+    }
+  }
+
+private:
 
   /**
    * Call get_info for each value in the specified multimap.
@@ -281,5 +303,7 @@ class read_netcdf {
 
     return w;
   }
+
+
 
 };
