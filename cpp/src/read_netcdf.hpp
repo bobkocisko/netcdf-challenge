@@ -1,8 +1,8 @@
-#include <crow.h>
+#include <nlohmann/json.hpp>
 #include <netcdf>
 
 using namespace netCDF;
-using namespace crow;
+using json = nlohmann::json;
 
 class read_netcdf {
   NcFile file;
@@ -22,7 +22,7 @@ public:
    * Returns general information about dimensions, variables and
    * attributes formatted as json
    */
-  json::wvalue get_info() const {
+  json get_info() const {
     return get_info(file);    
   }
 
@@ -30,14 +30,14 @@ public:
    * Returns the data as a json document for the specified variable_name
    * without any dimension constraints.
    */
-  json::wvalue get_data(const char* variable_name) {
+  json get_data(const char* variable_name) {
     return get_data(variable_name, std::vector<uint64_t>());
   }
   /**
    * Returns the data as a json document for the specified variable_name with
    * its first dimensions constrained to the specified values in 'prefix_indices'
    */
-  json::wvalue get_data(
+  json get_data(
       const char* variable_name, 
       std::vector<uint64_t> prefix_indices
   ) const {
@@ -81,7 +81,7 @@ public:
     void* buffer = (void*)buf.data();
     var.getVar(indices, counts, buffer);
 
-    std::vector<json::wvalue::list> lists(indices.size());
+    std::vector<json> lists(indices.size());
 
     std::size_t last_dim_index = var.getDimCount() - 1;
 
@@ -96,7 +96,7 @@ public:
           li >= first_unrestricted_index;
           --li
       ) {
-        json::wvalue::list &dim_list = lists[li];
+        json &dim_list = lists[li];
         if (li == last_dim_index) {
           dim_list.push_back(
             get_data_from_buffer(var.getType(), buffer, i));
@@ -153,7 +153,7 @@ private:
    * since they do similar things, but in the interest of time
    * for now I'm keeping them separate
    */
-  json::wvalue get_data_from_buffer(
+  json get_data_from_buffer(
       NcType t, void* buffer, std::size_t index) const 
   {
     switch (t.getTypeClass())
@@ -182,7 +182,7 @@ private:
    */
   template <typename K, typename V>
   auto get_info_mm(const std::multimap<K, V>& map) const {
-    auto o = json::wvalue::object();
+    auto o = json::object();
     for (auto iter = map.rbegin(); iter != map.rend(); ++iter) {
       auto &[k, v] = *iter;
       o[k] = get_info(v);
@@ -190,8 +190,8 @@ private:
     return o;
   }
 
-  json::wvalue get_info(const NcGroup& g) const {
-    auto w = json::wvalue::object();
+  json get_info(const NcGroup& g) const {
+    auto w = json::object();
 
     // NOTE: Writing these in the reverse order on purpose to fix
     // crow json's ordering
@@ -203,7 +203,7 @@ private:
     return w;
   }
 
-  json::wvalue get_info(const NcAtt& a) const {
+  json get_info(const NcAtt& a) const {
     if (a.isNull()) {
       return nullptr;
     }
@@ -393,20 +393,20 @@ private:
     return result.str();
   }
 
-  json::wvalue get_info(const NcDim& d) const {
+  json get_info(const NcDim& d) const {
     if (d.isUnlimited()) {
       return "<unlimited>";
     }
     return d.getSize();
   }
 
-  json::wvalue get_info(const NcVar& v) const {
-    auto w = json::wvalue::object();
+  json get_info(const NcVar& v) const {
+    auto w = json::object();
 
     // Variable attributes (for some reason *these*
     // end up in the correct order so we don't reverse them)
     {
-      auto ga = json::wvalue::object();
+      auto ga = json::object();
       for (auto &[k, val] : v.getAtts())
       {
         ga[k] = get_info(val);
@@ -416,7 +416,7 @@ private:
 
     // Variable dimensions (just an array of names)
     {
-      auto vd = json::wvalue::list();
+      auto vd = json::array();
       for (auto& d: v.getDims()) {
         vd.push_back(d.getName());
       }

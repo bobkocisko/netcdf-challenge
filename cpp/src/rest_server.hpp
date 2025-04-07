@@ -14,7 +14,13 @@ public:
   {
     CROW_ROUTE(app, "/get-info")([=](){
       read_netcdf& r = get_read_netcdf_for_thread();
-      return r.get_info();
+
+      std::string json = r.get_info().dump();
+      crow::response res;
+      res.code = crow::status::OK;
+      res.body = json;
+      res.set_header("Content-Type", "application/json");
+      return res;
     });
 
     CROW_ROUTE(app, "/get-data")([=](const crow::request& req){
@@ -34,15 +40,19 @@ public:
       }
       catch (std::exception &e)
       {
-        json::wvalue rsp = json::wvalue::object();
+        json rsp = json::object();
         rsp["error"] = e.what();
-        return crow::response(crow::status::BAD_REQUEST, rsp);
+        return crow::response(crow::status::BAD_REQUEST, rsp.dump());
       }
 
       // 2. Return the data
-      return crow::response(crow::status::OK, 
-        r.get_data("concentration", 
-          std::vector<uint64_t>({time_index, z_index})));
+      std::string json = r.get_data("concentration", 
+          std::vector<uint64_t>({time_index, z_index})).dump();
+      crow::response res;
+      res.code = crow::status::OK;
+      res.body = json;
+      res.set_header("Content-Type", "application/json");
+      return res;
     });
 
     CROW_ROUTE(app, "/get-image")([=](
@@ -64,9 +74,9 @@ public:
       }
       catch (std::exception &e)
       {
-        json::wvalue rsp = json::wvalue::object();
+        json rsp = json::object();
         rsp["error"] = e.what();
-        return crow::response(crow::status::BAD_REQUEST, rsp);
+        return crow::response(crow::status::BAD_REQUEST, rsp.dump());
       }
 
       // 2. get a file name to use
@@ -97,33 +107,35 @@ public:
 
       // 3. Generate the visualization to the file
 
-      json::rvalue time_data(json::load(r.get_data("time").dump()));
-      json::rvalue x_data(json::load(r.get_data("x").dump()));
-      json::rvalue y_data(json::load(r.get_data("y").dump()));
-      json::rvalue concentration_data(json::load(
+      json time_data = r.get_data("time");
+      json x_data = r.get_data("x");
+      json y_data = r.get_data("y");
+      json concentration_data = 
         r.get_data("concentration", 
-          std::vector<uint64_t>({time_index, z_index})).dump()));
+          std::vector<uint64_t>({time_index, z_index}));
 
       std::vector<double> x, y;
-      for (json::rvalue xv: x_data) {
-        x.push_back(xv.d());
+      for (json xv: x_data) {
+        x.push_back(xv);
       }
-      for (json::rvalue yv : y_data)
+      for (json yv : y_data)
       {
-        y.push_back(yv.d());
+        y.push_back(yv);
       }
       auto [X, Y] = matplot::meshgrid(x, y);
       matplot::vector_2d C;
-      for (json::rvalue cy: concentration_data) {
+      for (json cy: concentration_data) {
         std::vector<double> cys;
-        for (json::rvalue cx: cy) {
-          cys.push_back(cx.d());
+        for (json cx: cy) {
+          cys.push_back(cx);
         }
         C.push_back(cys);
       }
 
       // Generate figure without any display in quiet mode
       auto f = matplot::figure(true);
+      matplot::title(
+        std::string("Concentration at time ") + time_data[time_index].dump());
       matplot::contourf(X, Y, C);
       matplot::save(tmpf);
 
@@ -142,6 +154,7 @@ public:
       std::string image_string = image_data.str();
 
       crow::response res;
+      res.code = crow::status::OK;
       res.body = image_string;
       res.set_header("Content-Type", "image/png");
       return res;

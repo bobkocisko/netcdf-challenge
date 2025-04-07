@@ -38,7 +38,8 @@ RUN DEBIAN_FRONTEND=noninteractive \
       build-essential \
       cmake \
       pkg-config \
-      libnetcdf-c++4-dev
+      libnetcdf-c++4-dev \
+      nlohmann-json3-dev
 
 
 # Build crow library and install it into /usr/local.
