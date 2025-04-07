@@ -52,7 +52,18 @@ WORKDIR /usr/src/libcrow/build
 RUN cmake .. \
       -DCROW_BUILD_EXAMPLES=OFF \
       -DCROW_BUILD_TESTS=OFF
+RUN make install
 
+# Build matplot++ library and install it into /usr/local.
+WORKDIR /usr/src/matplotplusplus
+COPY third_party/matplotplusplus ./
+WORKDIR /usr/src/matplotplusplus/build
+RUN cmake .. \
+      -DMATPLOTPP_BUILD_EXAMPLES=OFF      \
+      -DMATPLOTPP_BUILD_SHARED_LIBS=ON    \
+      -DMATPLOTPP_BUILD_TESTS=OFF         \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
 RUN make install
 
 # NOTE: at the end of this stage we now have an environment that
@@ -97,7 +108,8 @@ ARG NETCDF_FILE_TARGET
 # Install runtime libaries for dependencies
 RUN DEBIAN_FRONTEND=noninteractive \
   apt-get install --assume-yes --no-install-recommends \
-  libnetcdf-c++4-1
+  libnetcdf-c++4-1 \
+  gnuplot
 
 
 # Copy the installed libraries from the earlier stage.

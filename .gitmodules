@@ -2,3 +2,6 @@
 	path = cpp/third_party/libcrow
 	url = git@github.com:CrowCpp/Crow.git
 	branch = v1.2.1
+[submodule "cpp/third_party/matplotplusplus"]
+	path = cpp/third_party/matplotplusplus
+	url = git@github.com:alandefreitas/matplotplusplus.git

@@ -1,6 +1,7 @@
 #include "read_netcdf.hpp"
 
 #include <crow.h>
+#include <matplot/matplot.h>
 
 
 class rest_server {
@@ -43,6 +44,112 @@ public:
         r.get_data("concentration", 
           std::vector<uint64_t>({time_index, z_index})));
     });
+
+    CROW_ROUTE(app, "/get-image")([=](
+        const crow::request& req
+      ){
+      read_netcdf& r = get_read_netcdf_for_thread();
+      uint64_t time_index, z_index;
+
+      // 1. Check that the request is valid, and if not return BAD_REQUEST
+      try
+      {
+        time_index = get_url_param_as_uint64(req, "time_index");
+        z_index = get_url_param_as_uint64(req, "z_index");
+
+        // Before continuing, make sure the dimensions are valid
+        // so that if they are invalid, we will return BAD_RESPONSE
+        r.validate_dimension_index("time", time_index);
+        r.validate_dimension_index("z", z_index);
+      }
+      catch (std::exception &e)
+      {
+        json::wvalue rsp = json::wvalue::object();
+        rsp["error"] = e.what();
+        return crow::response(crow::status::BAD_REQUEST, rsp);
+      }
+
+      // 2. get a file name to use
+      // Use one temp file per thread...this is to limit the total
+      // number of tempfiles requested
+      thread_local char tmpf[] = "/usr/local/var/tmpimage_XXXXXX.png";
+      thread_local bool initialized = false;
+      if (!initialized) {
+        mkstemps(tmpf, strlen(".png"));
+        initialized = true;
+      }
+      std::cout
+          << "Using tmp_path " << tmpf << " for thread "
+          << std::this_thread::get_id() << std::endl;
+
+      // Ensure that the file is truncated to 0 since 
+      // we are re-using the same files for each thread
+      // and our way of knowing when the files are created
+      // is to ensure the size is non-0.
+      std::filesystem::resize_file(tmpf, 0);
+      // ...and to be 100% sure that our logic below is
+      // set up for success, we'll ensure that file_size
+      // does in fact read '0', in case there could be
+      // any async behavior here.
+      while (std::filesystem::file_size(tmpf) != 0) {
+        usleep(100 * 1000); // sleep 100ms
+      };
+
+      // 3. Generate the visualization to the file
+
+      json::rvalue time_data(json::load(r.get_data("time").dump()));
+      json::rvalue x_data(json::load(r.get_data("x").dump()));
+      json::rvalue y_data(json::load(r.get_data("y").dump()));
+      json::rvalue concentration_data(json::load(
+        r.get_data("concentration", 
+          std::vector<uint64_t>({time_index, z_index})).dump()));
+
+      std::vector<double> x, y;
+      for (json::rvalue xv: x_data) {
+        x.push_back(xv.d());
+      }
+      for (json::rvalue yv : y_data)
+      {
+        y.push_back(yv.d());
+      }
+      auto [X, Y] = matplot::meshgrid(x, y);
+      matplot::vector_2d C;
+      for (json::rvalue cy: concentration_data) {
+        std::vector<double> cys;
+        for (json::rvalue cx: cy) {
+          cys.push_back(cx.d());
+        }
+        C.push_back(cys);
+      }
+
+      // Generate figure without any display in quiet mode
+      auto f = matplot::figure(true);
+      matplot::contourf(X, Y, C);
+      matplot::save(tmpf);
+
+
+      // 4. Wait for the file to be created (it seems
+      //    that the save function works asynchronously)
+      while (std::filesystem::file_size(tmpf) == 0) {
+        std::cout << "waiting for visualization to be created" << std::endl;
+        usleep(100 * 1000); // sleep 100ms
+      };
+
+      // 3. Return the image
+      std::ifstream image_file(tmpf, std::ios::binary);
+      std::ostringstream image_data;
+      image_data << image_file.rdbuf();
+      std::string image_string = image_data.str();
+
+      crow::response res;
+      res.body = image_string;
+      res.set_header("Content-Type", "image/png");
+      return res;
+
+      // res.set_header("Content-Type", "image/png"); // Explicitly set content type
+      // res.end();
+    });
+
 
     app
       .port(port)

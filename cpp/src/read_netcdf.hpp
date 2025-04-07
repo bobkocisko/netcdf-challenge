@@ -27,8 +27,15 @@ public:
   }
 
   /**
-   * Returns the data as a json document for the specified variable_name with 
-   * its first indexes constrained to the specified values in 'prefix_indices'
+   * Returns the data as a json document for the specified variable_name
+   * without any dimension constraints.
+   */
+  json::wvalue get_data(const char* variable_name) {
+    return get_data(variable_name, std::vector<uint64_t>());
+  }
+  /**
+   * Returns the data as a json document for the specified variable_name with
+   * its first dimensions constrained to the specified values in 'prefix_indices'
    */
   json::wvalue get_data(
       const char* variable_name, 
