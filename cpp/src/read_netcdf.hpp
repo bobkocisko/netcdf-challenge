@@ -2,7 +2,7 @@
 #include <netcdf>
 
 using namespace netCDF;
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 class read_netcdf {
   NcFile file;
@@ -183,24 +183,18 @@ private:
   template <typename K, typename V>
   auto get_info_mm(const std::multimap<K, V>& map) const {
     auto o = json::object();
-    for (auto iter = map.rbegin(); iter != map.rend(); ++iter) {
-      auto &[k, v] = *iter;
+    for (auto& [k, v]: map) {
       o[k] = get_info(v);
     }
     return o;
   }
 
   json get_info(const NcGroup& g) const {
-    auto w = json::object();
-
-    // NOTE: Writing these in the reverse order on purpose to fix
-    // crow json's ordering
-
-    w["attributes"] = get_info_mm(g.getAtts());
-    w["variables"] = get_info_mm(g.getVars());
-    w["dimensions"] = get_info_mm(g.getDims());
-
-    return w;
+    return {
+      {"dimensions", get_info_mm(g.getDims())},
+      {"variables", get_info_mm(g.getVars())},
+      {"attributes", get_info_mm(g.getAtts())},
+    };
   }
 
   json get_info(const NcAtt& a) const {
@@ -401,29 +395,23 @@ private:
   }
 
   json get_info(const NcVar& v) const {
-    auto w = json::object();
-
-    // Variable attributes (for some reason *these*
-    // end up in the correct order so we don't reverse them)
+    // Variable attributes
+    auto ga = json::object();
+    for (auto &[k, val] : v.getAtts())
     {
-      auto ga = json::object();
-      for (auto &[k, val] : v.getAtts())
-      {
-        ga[k] = get_info(val);
-      }
-      w["attributes"] = std::move(ga);
+      ga[k] = get_info(val);
     }
 
     // Variable dimensions (just an array of names)
-    {
-      auto vd = json::array();
-      for (auto& d: v.getDims()) {
-        vd.push_back(d.getName());
-      }
-      w["dimensions"] = std::move(vd);
+    auto vd = json::array();
+    for (auto& d: v.getDims()) {
+      vd.push_back(d.getName());
     }
 
-    return w;
+    return {
+      {"dimensions", vd},
+      {"attributes", ga}
+    };
   }
 
 
