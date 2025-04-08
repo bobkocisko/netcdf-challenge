@@ -137,6 +137,11 @@ public:
       matplot::title(
         std::string("Concentration at time ") + time_data[time_index].dump());
       matplot::contourf(X, Y, C);
+      // NOTE: experimenting with forcing min/max values
+      //   (ultimately this was unhelpful because the
+      //    values are drastically different between times)
+      // matplot::cblim({0, 0.04});
+      // matplot::colormap();
       matplot::save(tmpf);
 
 
