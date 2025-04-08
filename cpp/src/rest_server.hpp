@@ -135,7 +135,11 @@ public:
       // Generate figure without any display in quiet mode
       auto f = matplot::figure(true);
       matplot::title(
-        std::string("Concentration at time ") + time_data[time_index].dump());
+        std::string("Concentration (kg/m3) at time ") + 
+        time_data[time_index].dump() + " s");
+      matplot::xlabel("X Distance (m)");
+      matplot::ylabel("Y Distance (m)");
+      matplot::axis(matplot::tight);
       matplot::contourf(X, Y, C);
       // NOTE: experimenting with forcing min/max values
       //   (ultimately this was unhelpful because the
